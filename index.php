@@ -78,35 +78,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['asignar_equipo'])) {
     $stmt->execute([$equipo_id, $usuario_id, $fecha_asignacion]);
 }
 
-// Generar archivo Excel
+// Generar archivo Excel para una asignación específica
 if (isset($_GET['exportar_excel'])) {
-    $objPHPExcel = new PHPExcel();
-    $objPHPExcel->setActiveSheetIndex(0);
-    $sheet = $objPHPExcel->getActiveSheet();
-    $sheet->setTitle('Asignaciones');
+    require_once 'path/to/PHPExcel.php'; // Asegúrate de incluir la ruta correcta para PHPExcel
 
-    // Encabezados
-    $sheet->setCellValue('A1', 'Equipo');
-    $sheet->setCellValue('B1', 'Usuario');
-    $sheet->setCellValue('C1', 'Fecha de Asignación');
+    $asignacion_id = $_GET['exportar_excel'];
+    $sql = "SELECT a.*, e.nombre_equipo, e.procesador, e.ram, e.marca, e.modelo, e.serie, e.costo, e.estado, u.nombre as usuario_nombre
+            FROM asignaciones a
+            JOIN equipos e ON a.equipo_id = e.id
+            JOIN usuarios u ON a.usuario_id = u.id
+            WHERE a.id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$asignacion_id]);
+    $asignacion = $stmt->fetch();
 
-    $row = 2;
-    $asignaciones = getAsignaciones($pdo);
-    foreach ($asignaciones as $asignacion) {
-        $sheet->setCellValue('A' . $row, $asignacion['nombre_equipo']);
-        $sheet->setCellValue('B' . $row, $asignacion['usuario_nombre']);
-        $sheet->setCellValue('C' . $row, $asignacion['fecha_asignacion']);
-        $row++;
+    if ($asignacion) {
+        $objPHPExcel = new PHPExcel();
+        $objPHPExcel->setActiveSheetIndex(0);
+        $sheet = $objPHPExcel->getActiveSheet();
+        $sheet->setTitle('Asignación');
+
+        // Encabezados
+        $sheet->setCellValue('A1', 'Campo');
+        $sheet->setCellValue('B1', 'Valor');
+
+        // Datos específicos
+        $sheet->setCellValue('A2', 'Nombre del Usuario');
+        $sheet->setCellValue('B2', $asignacion['usuario_nombre']);
+        $sheet->setCellValue('A3', 'Modelo del Equipo');
+        $sheet->setCellValue('B3', $asignacion['modelo']);
+        $sheet->setCellValue('A4', 'Nombre del Equipo');
+        $sheet->setCellValue('B4', $asignacion['nombre_equipo']);
+        $sheet->setCellValue('A5', 'Procesador');
+        $sheet->setCellValue('B5', $asignacion['procesador']);
+        $sheet->setCellValue('A6', 'Memoria');
+        $sheet->setCellValue('B6', $asignacion['ram']);
+        $sheet->setCellValue('A7', 'Marca');
+        $sheet->setCellValue('B7', $asignacion['marca']);
+        $sheet->setCellValue('A8', 'Serie');
+        $sheet->setCellValue('B8', $asignacion['serie']);
+        $sheet->setCellValue('A9', 'Costo');
+        $sheet->setCellValue('B9', $asignacion['costo']);
+        $sheet->setCellValue('A10', 'Estado');
+        $sheet->setCellValue('B10', $asignacion['estado']);
+        $sheet->setCellValue('A11', 'Fecha de Asignación');
+        $sheet->setCellValue('B11', $asignacion['fecha_asignacion']);
+
+        $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
+        $filename = 'Asignacion_' . $asignacion_id . '.xlsx';
+        $objWriter->save($filename);
+
+        header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        header('Content-Disposition: attachment;filename="' . $filename . '"');
+        header('Cache-Control: max-age=0');
+        $objWriter->save('php://output');
+        exit;
     }
+}
 
-    $objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, 'Excel2007');
-    $filename = 'Asignaciones.xlsx';
-    $objWriter->save($filename);
+// Eliminar asignación
+if (isset($_GET['eliminar_asignacion'])) {
+    $asignacion_id = $_GET['eliminar_asignacion'];
+    $sql = "DELETE FROM asignaciones WHERE id = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$asignacion_id]);
 
-    header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-    header('Content-Disposition: attachment;filename="' . $filename . '"');
-    header('Cache-Control: max-age=0');
-    $objWriter->save('php://output');
+    // Redirigir después de eliminar
+    header('Location: ' . $_SERVER['PHP_SELF']);
     exit;
 }
 
@@ -302,6 +340,7 @@ $asignaciones = getAsignaciones($pdo);
                     <th>Equipo</th>
                     <th>Usuario</th>
                     <th>Fecha de Asignación</th>
+                    <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
@@ -310,12 +349,14 @@ $asignaciones = getAsignaciones($pdo);
                         <td><?php echo htmlspecialchars($asignacion['nombre_equipo']); ?></td>
                         <td><?php echo htmlspecialchars($asignacion['usuario_nombre']); ?></td>
                         <td><?php echo htmlspecialchars($asignacion['fecha_asignacion']); ?></td>
+                        <td>
+                            <a href="?exportar_excel=<?php echo $asignacion['id']; ?>" class="btn btn-success">Exportar</a>
+                            <a href="?eliminar_asignacion=<?php echo $asignacion['id']; ?>" class="btn btn-danger">Eliminar</a>
+                        </td>
                     </tr>
                 <?php endforeach; ?>
             </tbody>
         </table>
-
-        <a href="?exportar_excel=true" class="btn btn-success mt-3">Exportar a Excel</a>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
