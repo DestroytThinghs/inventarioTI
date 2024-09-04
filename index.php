@@ -1,5 +1,6 @@
 <?php
 require 'src/lib/db_connection.php';
+require 'vendor/autoload.php';
 // require 'src/lib/PHPExcel.php'; // Asegúrate de incluir PHPExcel
 
 // Función para obtener todos los equipos

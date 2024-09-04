@@ -1,0 +1,23 @@
+{
+    "name": "your-name/inventarioitgit",
+    "description": "Sistema de inventario IT",
+    "type": "project",
+    "require": {
+        "php": ">=7.4",
+        "phpoffice/phpspreadsheet": "^1.28",
+        "monolog/monolog": "2.0.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "mkdir -p src/lib"
+        ]
+    },
+    "config": {
+        "vendor-dir": "vendor"
+    }
+}
